@@ -10,6 +10,7 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: 'delete'): void
+  (e: 'pickSameType', type: Topic['type']): void
 }>()
 </script>
 
@@ -54,11 +55,24 @@ const emit = defineEmits<{
       
       <div 
         v-if="topic.isFlipped"
-        class="absolute inset-0 bg-green-500/10 flex items-center justify-center rounded-xl"
+        class="absolute inset-0 bg-green-500/10 flex items-center justify-center rounded-xl pointer-events-none"
       >
         <span class="bg-green-500 text-white px-4 py-1 rounded-full text-sm font-medium transform rotate-12">
           ✓ 已聊过
         </span>
+      </div>
+      
+      <div 
+        v-if="topic.isFlipped"
+        class="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <button 
+          class="px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full text-xs font-medium hover:opacity-90 transition-opacity flex items-center gap-1 shadow-lg pointer-events-auto"
+          @click.stop="emit('pickSameType', topic.type)"
+        >
+          <span>🎲</span>
+          <span>再来一个同款</span>
+        </button>
       </div>
     </div>
   </div>

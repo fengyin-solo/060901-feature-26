@@ -22,6 +22,7 @@ const authorName = ref('')
 const showAddTopic = ref(false)
 const copySuccess = ref(false)
 const selectedTemplate = ref<TopicTemplate | null>(null)
+const flippedFilterType = ref<TopicType | 'all'>('all')
 
 const roomId = computed(() => route.params.id as string)
 
@@ -32,6 +33,42 @@ const unflippedTopics = computed(() =>
 const flippedTopics = computed(() => 
   currentRoom.value?.topics.filter((t: Topic) => t.isFlipped) || []
 )
+
+const filteredFlippedTopics = computed(() => {
+  if (flippedFilterType.value === 'all') return flippedTopics.value
+  return flippedTopics.value.filter((t: Topic) => t.type === flippedFilterType.value)
+})
+
+const flippedTopicTypes = computed(() => {
+  const types = new Set<TopicType>()
+  flippedTopics.value.forEach((t: Topic) => types.add(t.type))
+  return Array.from(types)
+})
+
+const selectFlippedFilter = (type: TopicType | 'all') => {
+  flippedFilterType.value = type
+}
+
+const pickSameTypeTopic = (type: TopicType) => {
+  const question = getRandomQuestion(type)
+  if (!question || !currentRoom.value) {
+    alert('这个类型没有更多话题了，试试其他类型吧～')
+    return
+  }
+  
+  const template = allTopics.find((t: TopicTemplate) => t.type === type)
+  const defaultAuthor = currentRoom.value.members[0]?.name || '匿名'
+  
+  addTopic(
+    roomId.value,
+    question,
+    type,
+    defaultAuthor,
+    true
+  )
+  
+  alert(`已添加一个${template?.name || type}类型的话题！🎯`)
+}
 
 const canStartGame = computed(() => 
   currentRoom.value?.topics.length && currentRoom.value.topics.length >= 1
@@ -256,15 +293,56 @@ const goToGame = () => {
       </div>
 
       <div v-if="flippedTopics.length > 0">
-        <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <span>✅</span> 已聊话题 ({{ flippedTopics.length }})
-        </h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 opacity-70">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <span>✅</span> 已聊话题 ({{ flippedTopics.length }})
+          </h2>
+          <div class="flex flex-wrap gap-2">
+            <button 
+              class="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+              :class="{
+                'bg-gray-800 text-white': flippedFilterType === 'all',
+                'bg-gray-100 text-gray-600 hover:bg-gray-200': flippedFilterType !== 'all'
+              }"
+              @click="selectFlippedFilter('all')"
+            >
+              全部
+            </button>
+            <button 
+              v-for="type in flippedTopicTypes" 
+              :key="type"
+              class="px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1"
+              :class="{
+                'text-white': flippedFilterType === type,
+                'bg-gray-100 text-gray-600 hover:bg-gray-200': flippedFilterType !== type
+              }"
+              :style="flippedFilterType === type ? { backgroundColor: TOPIC_COLORS[type] } : {}"
+              @click="selectFlippedFilter(type)"
+            >
+              <span>{{ TOPIC_EMOJIS[type] }}</span>
+              <span>{{ allTopics.find(t => t.type === type)?.name || type }}</span>
+            </button>
+            <button 
+              v-if="flippedFilterType !== 'all'"
+              class="px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90 transition-opacity flex items-center gap-1"
+              @click="pickSameTypeTopic(flippedFilterType)"
+            >
+              <span>🎲</span>
+              <span>再抽一个同类型</span>
+            </button>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <TopicCard 
-            v-for="topic in flippedTopics" 
+            v-for="topic in filteredFlippedTopics" 
             :key="topic.id"
             :topic="topic"
+            @pickSameType="pickSameTypeTopic"
           />
+        </div>
+        <div v-if="filteredFlippedTopics.length === 0" class="text-center py-8 bg-white/50 rounded-2xl">
+          <div class="text-4xl mb-2">🔍</div>
+          <p class="text-gray-500 text-sm">这个类型还没有聊过的话题</p>
         </div>
       </div>
 
